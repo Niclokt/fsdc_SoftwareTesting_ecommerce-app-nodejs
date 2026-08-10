@@ -4,6 +4,8 @@ const fs = require("fs");
 
 const errorController = require("./controllers/error");
 const sequelize = require("./util/database");
+
+// 1. ALL MODEL IMPORTS MUST BE HERE AT THE TOP
 const Product = require("./models/product");
 const User = require("./models/user");
 const Cart = require("./models/cart");
@@ -24,8 +26,7 @@ app.set("views", "views");
 const adminRoutes = require("./routes/admin");
 const shopRoutes = require("./routes/shop");
 
-// FIX #1: Only create log file stream during regular execution, not during automated tests
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "e2e") {
     const accessLogStream = fs.createWriteStream(
         path.join(__dirname, "access.log"),
         { flags: "a" },
@@ -41,13 +42,11 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use((req, res, next) => {
     User.findByPk(1)
         .then((user) => {
-            // FIX #1: Fallback mock user if SQLite DB has no records yet
             req.user = user || { id: 1, name: "Test User" };
             next();
         })
         .catch((error) => {
             console.log("Error in App.js during user retrieval:", error);
-            // FIX #2: Call next() so requests don't hang on DB error
             next();
         });
 });
@@ -56,7 +55,7 @@ app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 app.use(errorController.get404);
 
-// Database Associations
+// 2. DATABASE ASSOCIATIONS (Placed AFTER models are required)
 Product.belongsTo(User, { constraints: true, onDelete: "CASCADE" });
 User.hasMany(Product);
 
@@ -70,32 +69,50 @@ Order.belongsTo(User);
 User.hasMany(Order);
 Order.belongsToMany(Product, { through: OrderItem });
 
-// FIX #3: CRITICAL FOR SUPERTEST / JEST
-// Only bind port 5000 and run DB sync when NOT running automated tests.
-// Supertest handles its own internal server lifecycle—calling app.listen() in tests causes EADDRINUSE errors.
+// 3. SERVER INITIALIZATION & SYNC
 if (process.env.NODE_ENV !== "test") {
+    const isE2E = process.env.NODE_ENV === "e2e";
+
     sequelize
-        .sync()
+        .sync({ force: isE2E })
         .then(() => User.findByPk(1))
-        .then((user) => {
+        .then(async (user) => {
             if (!user) {
-                return User.create({
+                user = await User.create({
                     name: "Lahiru",
                     email: "lahirurc1st@gmail.com",
                 });
             }
             return user;
         })
-        .then((user) => {
-            // FIX #4: Check if cart exists first before creating one to prevent duplicate cart constraint errors
-            return user
-                .getCart()
-                .then((cart) => (cart ? cart : user.createCart()));
+        .then(async (user) => {
+            const cart = await user.getCart();
+            if (!cart) {
+                await user.createCart();
+            }
+
+            if (isE2E) {
+                const count = await Product.count();
+                if (count === 0) {
+                    await Product.create({
+                        title: "Mock Book 1",
+                        price: 10.0,
+                        imageUrl: "https://via.placeholder.com/150",
+                        description: "Test Description",
+                        userId: user.id,
+                    });
+                }
+            }
         })
         .then(() => {
-            const PORT = process.env.PORT || 5000;
+            const PORT = process.env.PORT || 5001;
             app.listen(PORT, () => {
-                console.log(`Server is running on port ${PORT}`);
+                console.log(`\n========================================`);
+                console.log(`Server is running on http://localhost:${PORT}`);
+                console.log(
+                    `Environment: ${process.env.NODE_ENV || "development"}`,
+                );
+                console.log(`========================================\n`);
             });
         })
         .catch((error) => console.log("APP startup error:", error));
