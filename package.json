@@ -4,10 +4,13 @@
   "description": "Complete Node.js Guide",
   "main": "app.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest",
     "start": "node app.js",
+    "test": "cross-env NODE_ENV=test jest --forceExit",
     "start-server": "node app.js",
-    "start:dev": "nodemon app.js"
+    "start:dev": "nodemon app.js",
+    "start:e2e": "PORT=5001 NODE_ENV=e2e node app.js",
+    "test:e2e": "PORT=5001 node tests/e2e/shop-product-list.e2e.js",
+    "test:load": "k6 run tests/performance/product-list.k6.js"
   },
   "author": "Maximilian Schwarzmüller",
   "license": "ISC",
@@ -29,6 +32,7 @@
     "morgan": "^1.10.0",
     "mysql2": "^3.9.7",
     "pug": "^3.0.4",
+    "selenium-webdriver": "^4.46.0",
     "sequelize": "^6.37.3"
   }
 }
