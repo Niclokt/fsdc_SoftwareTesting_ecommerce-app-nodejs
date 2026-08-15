@@ -1,7 +1,7 @@
 const { Builder, By, until } = require("selenium-webdriver");
 const assert = require("assert");
 
-// Port defaults to 5000 based on app.js (process.env.PORT || 5001)
+// Port defaults to 5001 based on app.js (process.env.PORT || 5001)
 const PORT = process.env.PORT || 5001;
 const BASE_URL = `http://localhost:${PORT}/product-list`;
 
@@ -69,6 +69,10 @@ const BASE_URL = `http://localhost:${PORT}/product-list`;
             assert.strictEqual(await addToCartBtn.getText(), "Add to Cart");
 
             console.log("[SUCCESS] Happy Path E2E Test Passed!");
+
+            // TEMPORARY: Pause for 5 seconds so you can see the UI
+            console.log("[INFO] Pausing for 5 seconds to inspect the UI...");
+            await driver.sleep(10000);
         } else {
             // ==========================================
             // EDGE PATH: Catalog is empty
@@ -89,6 +93,10 @@ const BASE_URL = `http://localhost:${PORT}/product-list`;
             console.log(
                 '[SUCCESS] Edge Path E2E Test Passed: "No Products Found!" verified.',
             );
+
+            // TEMPORARY: Pause for 5 seconds so you can see the UI
+            console.log("[INFO] Pausing for 5 seconds to inspect the UI...");
+            await driver.sleep(10000);
         }
     } catch (error) {
         console.error("[FAIL] Test execution failed:", error.message);
